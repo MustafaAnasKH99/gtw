@@ -2,6 +2,7 @@ import express from "express";
 import cors from "cors";
 import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
+import path from "path";
 import { wordExists, getRandomWord, wordCount, getRank } from "./db/index.js";
 
 const app = express();
@@ -64,6 +65,12 @@ app.post("/guess", async (req, res) => {
 app.get("/health", async (_req, res) => {
   res.json({ status: "ok", words: await getTotal() });
 });
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const distPath = path.join(__dirname, "frontend", "dist");
+
+app.use(express.static(distPath));
+app.get("/{*path}", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
 
 export { app, sessions };
 

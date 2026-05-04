@@ -1,0 +1,351 @@
+:root {
+  --color-brand: #006239;
+  --color-bg: #FBFAF7;
+  --color-text: #171717;
+  --color-text-muted: rgba(23, 23, 23, 0.45);
+  --color-error: #b42828;
+  --font-serif: 'Source Serif 4', Georgia, serif;
+  --font-sans: 'Geist', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.5;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(0, 98, 57, 0.18);
+}
+
+input::placeholder {
+  font-style: italic;
+  color: var(--color-text-muted);
+}
+
+/* App shell */
+.app {
+  min-height: 100svh;
+  display: flex;
+  justify-content: center;
+  padding: clamp(24px, 5vw, 56px) clamp(20px, 4.5vw, 56px);
+}
+
+.app__inner {
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+
+.app__loading {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  padding-top: 40px;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.header__title {
+  font-family: var(--font-serif);
+  font-size: clamp(22px, 4.5vw, 32px);
+  font-weight: 400;
+  letter-spacing: -0.02em;
+  color: var(--color-text);
+}
+
+.header__title em {
+  font-style: italic;
+  color: var(--color-brand);
+}
+
+.header__meta {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.header__count {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.header__reset {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.header__reset:hover {
+  color: var(--color-text);
+}
+
+/* Win banner */
+.win-banner {
+  background: var(--color-brand);
+  border-radius: 6px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  animation: fadeUp 0.4s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.win-banner__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(251, 250, 247, 0.65);
+}
+
+.win-banner__word {
+  font-family: var(--font-serif);
+  font-size: clamp(28px, 6vw, 38px);
+  font-weight: 400;
+  font-style: italic;
+  color: #FBFAF7;
+  letter-spacing: -0.02em;
+}
+
+.win-banner__count {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: rgba(251, 250, 247, 0.65);
+  margin-top: 4px;
+}
+
+/* Closest card */
+.closest-card {
+  background: #fff;
+  border-radius: 6px;
+  display: flex;
+  overflow: hidden;
+  box-shadow: 0 1px 3px rgba(23, 23, 23, 0.08);
+  min-height: 64px;
+}
+
+.closest-card__accent {
+  width: 3px;
+  background: var(--accent-color, #d4d3d0);
+  flex-shrink: 0;
+}
+
+.closest-card__body {
+  padding: 14px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.closest-card__label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.closest-card__word {
+  font-family: var(--font-serif);
+  font-size: clamp(18px, 3.5vw, 22px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+}
+
+.closest-card__rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+}
+
+/* Guess input */
+.guess-input {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.guess-input__row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1.5px solid rgba(23, 23, 23, 0.15);
+  border-radius: 6px;
+  overflow: hidden;
+  background: #fff;
+  transition: border-color 0.15s;
+}
+
+.guess-input__row:focus-within {
+  border-color: rgba(23, 23, 23, 0.35);
+}
+
+.guess-input__prefix {
+  padding: 0 10px 0 14px;
+  color: var(--color-text-muted);
+  font-size: 16px;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.guess-input__field {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--color-text);
+  padding: 11px 0;
+}
+
+.guess-input__field:disabled {
+  color: var(--color-text-muted);
+}
+
+.guess-input__submit {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: #fff;
+  background: var(--color-brand);
+  border: none;
+  padding: 0 18px;
+  height: 100%;
+  cursor: pointer;
+  transition: opacity 0.15s;
+  align-self: stretch;
+}
+
+.guess-input__submit:disabled {
+  background: rgba(23, 23, 23, 0.15);
+  cursor: default;
+}
+
+.guess-input__submit:not(:disabled):hover {
+  opacity: 0.85;
+}
+
+.guess-input__error {
+  font-size: 13px;
+  color: var(--color-error);
+  padding-left: 2px;
+}
+
+/* Guess list */
+.guess-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.guess-list__empty {
+  color: var(--color-text-muted);
+  font-size: 14px;
+  line-height: 1.6;
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* Guess row */
+.guess-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border-radius: 4px;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.guess-row--latest {
+  background: rgba(0, 98, 57, 0.04);
+  animation: fadeUp 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+.guess-row__heat-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: var(--heat-width, 0%);
+  background: var(--heat-color, transparent);
+  opacity: 0.12;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.guess-row__word {
+  font-family: var(--font-serif);
+  font-size: clamp(15px, 3vw, 17px);
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--color-text);
+  flex: 1;
+  position: relative;
+}
+
+.guess-row__rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  position: relative;
+  flex-shrink: 0;
+}
+
+/* Footer */
+.footer {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: var(--color-text-muted);
+  text-align: center;
+  padding-top: 4px;
+}
+
+/* Animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
