@@ -1,39 +1,46 @@
-import Database from "better-sqlite3";
+import pg from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
+import { configDotenv } from "dotenv";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = process.env.DB_PATH ?? path.join(__dirname, "..", "words.db");
-const db = new Database(DB_PATH);
+configDotenv({ path: path.join(__dirname, "..", ".env"), override: true });
 
-const stmtExists = db.prepare("SELECT 1 FROM words WHERE word = ?");
-const stmtEmbedding = db.prepare("SELECT embedding FROM words WHERE word = ?");
-const stmtCount = db.prepare("SELECT COUNT(*) AS count FROM words");
-const stmtRandom = db.prepare("SELECT word FROM words ORDER BY RANDOM() LIMIT 1");
-const stmtAll = db.prepare("SELECT word, embedding FROM words");
+const pool = new pg.Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false },
+});
 
-export function wordExists(word) {
-  return !!stmtExists.get(word);
+export async function wordExists(word) {
+  const { rows } = await pool.query("SELECT 1 FROM words WHERE word = $1", [word]);
+  return rows.length > 0;
 }
 
-export function getEmbedding(word) {
-  const row = stmtEmbedding.get(word);
-  if (!row) return null;
-  return new Float32Array(JSON.parse(row.embedding));
+export async function getRandomWord() {
+  const { rows } = await pool.query("SELECT word FROM words ORDER BY RANDOM() LIMIT 1");
+  return rows[0]?.word ?? null;
 }
 
-export function getRandomWord() {
-  return stmtRandom.get()?.word ?? null;
+export async function wordCount() {
+  const { rows } = await pool.query("SELECT COUNT(*)::int AS count FROM words");
+  return rows[0].count;
 }
 
-export function wordCount() {
-  return stmtCount.get().count;
+// Returns the 1-based rank of guessWord relative to secretWord.
+// Rank 1 = the secret word itself (distance 0). Higher rank = less similar.
+export async function getRank(secretWord, guessWord) {
+  const { rows } = await pool.query(
+    `SELECT (
+       SELECT COUNT(*)::int FROM words
+       WHERE embedding <=> s.embedding < (w.embedding <=> s.embedding)
+     ) + 1 AS rank
+     FROM words w, words s
+     WHERE w.word = $1 AND s.word = $2`,
+    [guessWord, secretWord]
+  );
+  return rows[0]?.rank ?? null;
 }
 
-export function getAllEmbeddings() {
-  const map = new Map();
-  for (const row of stmtAll.iterate()) {
-    map.set(row.word, new Float32Array(JSON.parse(row.embedding)));
-  }
-  return map;
+export function closePool() {
+  return pool.end();
 }

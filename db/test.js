@@ -1,45 +1,39 @@
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { wordExists, getEmbedding, getRandomWord, wordCount } from "./index.js";
+import { wordExists, getRandomWord, wordCount, getRank, closePool } from "./index.js";
 
-test("database has words loaded", () => {
-  const count = wordCount();
+test("database has words loaded", async () => {
+  const count = await wordCount();
   assert.ok(count > 0, `expected rows in DB, got ${count}`);
   console.log(`  row count: ${count}`);
 });
 
-test("wordExists returns true for a known word", () => {
-  assert.equal(wordExists("embassy"), true);
+test("wordExists returns true for a known word", async () => {
+  assert.equal(await wordExists("embassy"), true);
 });
 
-test("wordExists returns false for a non-word", () => {
-  assert.equal(wordExists("xyznotaword123"), false);
+test("wordExists returns false for a non-word", async () => {
+  assert.equal(await wordExists("xyznotaword123"), false);
 });
 
-test("getEmbedding returns a Float32Array of length 1536", () => {
-  const emb = getEmbedding("embassy");
-  assert.ok(emb instanceof Float32Array, "embedding should be a Float32Array");
-  assert.equal(emb.length, 1536, `expected 1536 dimensions, got ${emb.length}`);
-});
-
-test("getEmbedding returns null for an unknown word", () => {
-  assert.equal(getEmbedding("xyznotaword123"), null);
-});
-
-test("getRandomWord returns a non-empty string", () => {
-  const word = getRandomWord();
+test("getRandomWord returns a non-empty string", async () => {
+  const word = await getRandomWord();
   assert.ok(typeof word === "string" && word.length > 0, `expected a word, got ${word}`);
 });
 
-test("getRandomWord result exists in the database", () => {
-  const word = getRandomWord();
-  assert.equal(wordExists(word), true, `random word "${word}" not found in DB`);
+test("getRandomWord result exists in the database", async () => {
+  const word = await getRandomWord();
+  assert.equal(await wordExists(word), true, `random word "${word}" not found in DB`);
 });
 
-test("embeddings are unit-normalized (L2 norm ≈ 1)", () => {
-  const emb = getEmbedding("embassy");
-  const norm = Math.sqrt(emb.reduce((sum, v) => sum + v * v, 0));
-  assert.ok(Math.abs(norm - 1) < 0.01, `expected norm ≈ 1, got ${norm}`);
+test("getRank returns 1 for a word against itself", async () => {
+  const rank = await getRank("embassy", "embassy");
+  assert.equal(rank, 1);
+});
+
+test("getRank returns a positive integer > 1 for a different word", async () => {
+  const rank = await getRank("embassy", "garden");
+  assert.ok(Number.isInteger(rank) && rank > 1, `expected rank > 1, got ${rank}`);
 });
 
 // ---------------------------------------------------------------------------
@@ -64,6 +58,7 @@ describe("server endpoints", () => {
     await new Promise((resolve, reject) =>
       server.close(err => (err ? reject(err) : resolve()))
     );
+    await closePool();
   });
 
   async function newGame() {
@@ -110,7 +105,6 @@ describe("server endpoints", () => {
     const { body: game } = await newGame();
     const secretWord = sessions.get(game.sessionId).secretWord;
     await guess(game.sessionId, secretWord);
-    // session should be gone now
     const { res, body } = await guess(game.sessionId, "embassy");
     assert.equal(res.status, 404);
     assert.ok(body.error.includes("session not found"));
