@@ -73,12 +73,6 @@ app.get("/health", (_req, res) => {
   res.json({ status: "ok", words: allEmbeddings.size });
 });
 
-app.get("/debug/secret", (req, res) => {
-  const sessionId = req.headers["x-session-id"];
-  const session = sessions.get(sessionId);
-  if (!session) return res.status(404).json({ error: "session not found" });
-  res.json({ secretWord: session.secretWord });
-});
 
 export { app, sessions };
 
