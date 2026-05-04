@@ -1,0 +1,13 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(node db/setup.js)",
+      "PowerShell(cd \"c:\\\\Users\\\\susuk\\\\Desktop\\\\GTWproject\"; \\(Get-Content words_processing_code\\\\final_words.txt | Measure-Object -Line\\).Lines)",
+      "PowerShell(cd \"c:\\\\Users\\\\susuk\\\\Desktop\\\\GTWproject\"; \\(Get-Content generate_embeddings\\\\embeddings.json | Measure-Object -Line\\).Lines)",
+      "PowerShell(cd \"c:\\\\Users\\\\susuk\\\\Desktop\\\\GTWproject\"; Start-Process -NoNewWindow -FilePath \"node\" -ArgumentList \"server.js\" -RedirectStandardOutput \"$env:TEMP\\\\gtw_server.log\" -RedirectStandardError \"$env:TEMP\\\\gtw_server_err.log\"; Start-Sleep -Seconds 4; Get-Content \"$env:TEMP\\\\gtw_server.log\"; Get-Content \"$env:TEMP\\\\gtw_server_err.log\")",
+      "PowerShell(Stop-Process -Name \"node\" -Force -ErrorAction SilentlyContinue)",
+      "PowerShell(\\(Get-Item \"c:\\\\Users\\\\susuk\\\\Desktop\\\\GTWproject\\\\words.db\"\\).Length / 1MB)"
+    ]
+  }
+}

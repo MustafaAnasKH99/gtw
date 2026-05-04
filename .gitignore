@@ -1,0 +1,6 @@
+node_modules/
+.env
+words.db
+final_words.txt
+words_processing_code/
+generate_embeddings/

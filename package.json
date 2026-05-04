@@ -1,0 +1,21 @@
+{
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "db:setup": "node db/setup.js",
+    "db:load": "node db/load.js",
+    "embed": "node generate_embeddings/generate.js",
+    "test": "node --test db/test.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.0.0",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "openai": "^6.35.0",
+    "pdf2json": "^4.0.3"
+  }
+}
