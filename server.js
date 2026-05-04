@@ -13,8 +13,10 @@ const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 // Map<sessionId, { secretWord, lastAccessedAt }>
 const sessions = new Map();
 
-// Cache total word count once at module load (top-level await, ES module)
-const totalWords = await wordCount();
+// Kick off the word count query immediately but don't block module initialization.
+// This way app.listen() always fires even if the DB is slow or unreachable at startup.
+const totalWordsPromise = wordCount();
+const getTotal = () => totalWordsPromise;
 
 // Sweep expired sessions every hour
 setInterval(() => {
@@ -53,19 +55,19 @@ app.post("/guess", async (req, res) => {
 
     if (won) sessions.delete(sessionId);
 
-    res.json({ word, rank, total: totalWords, won });
+    res.json({ word, rank, total: await getTotal(), won });
   } catch {
     res.status(500).json({ error: "internal error" });
   }
 });
 
-app.get("/health", (_req, res) => {
-  res.json({ status: "ok", words: totalWords });
+app.get("/health", async (_req, res) => {
+  res.json({ status: "ok", words: await getTotal() });
 });
 
 export { app, sessions };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const PORT = process.env.PORT ?? 3000;
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}, ${totalWords} words`));
+  app.listen(PORT, async () => console.log(`Server running on port ${PORT}, ${await getTotal()} words`));
 }
