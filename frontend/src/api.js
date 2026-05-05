@@ -1,11 +1,13 @@
+const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+
 export async function newGame() {
-  const res = await fetch('/new-game', { method: 'POST' })
+  const res = await fetch(`${BASE}/new-game`, { method: 'POST' })
   if (!res.ok) throw new Error('Failed to start game')
   return res.json() // { sessionId, message }
 }
 
 export async function submitGuess(sessionId, word) {
-  const res = await fetch('/guess', {
+  const res = await fetch(`${BASE}/guess`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
