@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '');
 
 export async function newGame() {
   const res = await fetch(`${BASE}/new-game`, { method: 'POST' })
@@ -15,7 +15,10 @@ export async function submitGuess(sessionId, word) {
     },
     body: JSON.stringify({ word }),
   })
-  const data = await res.json()
-  if (!res.ok) throw Object.assign(new Error(data.error || 'Request failed'), { status: res.status })
-  return data // { word, rank, total, won }
+  if (!res.ok) {
+    let message = 'Request failed'
+    try { const d = await res.json(); message = d.error || message } catch {}
+    throw Object.assign(new Error(message), { status: res.status })
+  }
+  return res.json() // { word, rank, total, won }
 }
