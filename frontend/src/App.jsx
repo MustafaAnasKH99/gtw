@@ -84,6 +84,11 @@ export default function App() {
     return guesses.reduce((best, g) => (g.rank < best.rank ? g : best))
   }, [guesses])
 
+  const latestGuess = useMemo(() => {
+    if (!latestWord) return null
+    return guesses.find((g) => g.word === latestWord) ?? null
+  }, [guesses, latestWord])
+
   if (loading) {
     return (
       <div className="app">
@@ -100,6 +105,12 @@ export default function App() {
           ? <WinBanner secretWord={secretWord} guessCount={guesses.length} />
           : <ClosestCard guess={closest} />
         }
+        {latestGuess && !won && (
+          <div className="latest-hint">
+            <span className="latest-hint__word">{latestGuess.word}</span>
+            <span className="latest-hint__rank">rank {latestGuess.rank.toLocaleString()}</span>
+          </div>
+        )}
         <GuessInput onSubmit={handleGuess} disabled={won} submitting={submitting} />
         <GuessList guesses={guesses} latestWord={latestWord} won={won} />
         <footer className="footer">Lower rank · closer meaning</footer>

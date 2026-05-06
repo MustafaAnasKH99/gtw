@@ -244,7 +244,6 @@ input::placeholder {
   background: var(--color-brand);
   border: none;
   padding: 0 18px;
-  height: 100%;
   cursor: pointer;
   transition: opacity 0.15s;
   align-self: stretch;
@@ -263,6 +262,26 @@ input::placeholder {
   font-size: 13px;
   color: var(--color-error);
   padding-left: 2px;
+}
+
+/* Latest guess hint */
+.latest-hint {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.latest-hint__word {
+  font-family: var(--font-serif);
+  font-size: 14px;
+  color: var(--color-text);
+}
+
+.latest-hint__rank {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
 }
 
 /* Guess list */
