@@ -18,12 +18,14 @@ export default function EmbeddingScene() {
   const [reranking, setReranking] = useState(false)
   const [error, setError] = useState(null)
   const [hovered, setHovered] = useState(null)
+  const [pinned, setPinned] = useState(null)
   const abortRef = useRef(null)
 
   const refresh = async (currentCoords) => {
     if (abortRef.current) abortRef.current.abort()
     const controller = new AbortController()
     abortRef.current = controller
+    setPinned(null)
     try {
       const words = currentCoords.map((c) => c.word)
       const data = await fetchVizRanks(words, undefined, controller.signal)
@@ -102,10 +104,12 @@ export default function EmbeddingScene() {
               ranks={ranks}
               secretWord={secretWord}
               onHover={setHovered}
+              onPick={setPinned}
             />
             {secretWord && ranks && coords && (
               <SecretMarker coords={coords} secretWord={secretWord} />
             )}
+            {pinned && <PinnedMarker point={pinned} />}
             {hovered && <HoverLabel hovered={hovered} />}
             <OrbitControls
               enableDamping
@@ -120,13 +124,13 @@ export default function EmbeddingScene() {
       </div>
 
       <p className="about__viz-caption">
-        Hover a point to see the word. Click <em>Reset secret</em> to pick a new one — the camera stays put so you can compare layouts.
+        Hover a point to see the word, click to pin its label. Click <em>Reset secret</em> to pick a new one — the camera stays put so you can compare layouts.
       </p>
     </div>
   )
 }
 
-function PointCloud({ coords, ranks, secretWord, onHover }) {
+function PointCloud({ coords, ranks, secretWord, onHover, onPick }) {
   const meshRef = useRef(null)
   const { invalidate } = useThree()
   const count = coords.length
@@ -185,6 +189,15 @@ function PointCloud({ coords, ranks, secretWord, onHover }) {
     onHover({ index: e.instanceId, word: c.word, x: c.x, y: c.y, z: c.z })
   }
   const handleOut = () => onHover(null)
+  const handleClick = (e) => {
+    e.stopPropagation()
+    if (e.instanceId == null) return
+    const c = coords[e.instanceId]
+    if (!c || c.word === secretWord) return
+    onPick((prev) =>
+      prev?.word === c.word ? null : { word: c.word, x: c.x, y: c.y, z: c.z }
+    )
+  }
 
   return (
     <instancedMesh
@@ -192,6 +205,7 @@ function PointCloud({ coords, ranks, secretWord, onHover }) {
       args={[geometry, material, count]}
       onPointerMove={handleMove}
       onPointerOut={handleOut}
+      onClick={handleClick}
     />
   )
 }
@@ -213,6 +227,23 @@ function SecretMarker({ coords, secretWord }) {
         anchorY="bottom"
       >
         {secretWord}
+      </Text>
+    </Billboard>
+  )
+}
+
+function PinnedMarker({ point }) {
+  return (
+    <Billboard position={[point.x, point.y + 0.08, point.z]}>
+      <Text
+        fontSize={0.06}
+        color="#1A1A1A"
+        outlineWidth={0.006}
+        outlineColor="#FBFAF7"
+        anchorX="center"
+        anchorY="bottom"
+      >
+        {point.word}
       </Text>
     </Billboard>
   )
