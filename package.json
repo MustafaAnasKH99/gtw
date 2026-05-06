@@ -2,8 +2,10 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
+    "app": "concurrently -n server,frontend -c blue,magenta \"node server.js\" \"npm --prefix frontend run dev\"",
     "db:migrate": "node db/migrate-to-supabase.js",
     "embed": "node generate_embeddings/generate.js",
+    "precompute:3d": "node precompute_3d/reduce.js",
     "test": "node --test db/test.js"
   },
   "engines": {
@@ -14,8 +16,12 @@
     "cors": "^2.8.6",
     "dotenv": "^17.4.2",
     "express": "^5.2.1",
+    "ml-pca": "^4.1.1",
     "openai": "^6.35.0",
     "pdf2json": "^4.0.3",
     "pg": "^8.20.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

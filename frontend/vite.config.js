@@ -8,6 +8,7 @@ export default defineConfig({
       '/new-game': 'http://localhost:3000',
       '/guess': 'http://localhost:3000',
       '/health': 'http://localhost:3000',
+      '/viz/ranks': 'http://localhost:3000',
     },
   },
 })

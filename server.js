@@ -3,7 +3,7 @@ import cors from "cors";
 import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import path from "path";
-import { wordExists, getRandomWord, wordCount, getRank } from "./db/index.js";
+import { wordExists, getRandomWord, wordCount, getRank, getRanksForWords } from "./db/index.js";
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN ?? "*" }));
@@ -41,7 +41,7 @@ app.post("/new-game", async (_req, res) => {
 app.post("/guess", async (req, res) => {
   const sessionId = req.headers["x-session-id"];
   const session = sessions.get(sessionId);
-  if (!session) return res.status(404).json({ error: "session not found — start a new game" });
+  if (!session) return res.status(401).json({ error: "session not found — start a new game" });
 
   session.lastAccessedAt = Date.now();
 
@@ -64,6 +64,39 @@ app.post("/guess", async (req, res) => {
 
 app.get("/health", async (_req, res) => {
   res.json({ status: "ok", words: await getTotal() });
+});
+
+// Visualization endpoint: ranks a fixed set of words against a secret. Returns
+// the secret in plaintext — this is unrelated to game sessions and exists purely
+// to drive the About-tab 3D viz.
+app.post("/viz/ranks", async (req, res) => {
+  const words = req.body?.words;
+  if (!Array.isArray(words) || words.length === 0) {
+    return res.status(400).json({ error: "words must be a non-empty array" });
+  }
+  if (words.length > 2500) {
+    return res.status(400).json({ error: "too many words (max 2500)" });
+  }
+  if (!words.every(w => typeof w === "string" && w.length > 0)) {
+    return res.status(400).json({ error: "words must all be non-empty strings" });
+  }
+
+  let secret = req.body?.secret;
+  if (secret !== undefined) {
+    if (typeof secret !== "string" || !await wordExists(secret)) {
+      return res.status(404).json({ error: "secret word not found" });
+    }
+  } else {
+    secret = words[Math.floor(Math.random() * words.length)];
+  }
+
+  try {
+    const ranks = await getRanksForWords(secret, words);
+    res.json({ secret, ranks });
+  } catch (err) {
+    console.error("/viz/ranks failed:", err);
+    res.status(500).json({ error: "internal error" });
+  }
 });
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));

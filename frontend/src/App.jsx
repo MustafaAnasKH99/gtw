@@ -1,9 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
-import Header from './components/Header.jsx'
-import WinBanner from './components/WinBanner.jsx'
-import ClosestCard from './components/ClosestCard.jsx'
-import GuessInput from './components/GuessInput.jsx'
-import GuessList from './components/GuessList.jsx'
+import TabNav from './components/TabNav.jsx'
+import GameSection from './components/GameSection.jsx'
+import AboutSection from './components/AboutSection.jsx'
+import BuiltBySection from './components/BuiltBySection.jsx'
 import { newGame, submitGuess } from './api.js'
 import { heatFromRank } from './utils/heat.js'
 import { loadSession, saveSession, clearSession } from './utils/storage.js'
@@ -13,6 +12,7 @@ function todayStr() {
 }
 
 export default function App() {
+  const [activeTab, setActiveTab] = useState('game')
   const [sessionId, setSessionId] = useState(null)
   const [guesses, setGuesses] = useState([])
   const [won, setWon] = useState(false)
@@ -20,9 +20,11 @@ export default function App() {
   const [latestWord, setLatestWord] = useState(null)
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
+  const [startupError, setStartupError] = useState(null)
 
   async function startNewGame() {
     setLoading(true)
+    setStartupError(null)
     clearSession()
     try {
       const { sessionId: id } = await newGame()
@@ -32,6 +34,9 @@ export default function App() {
       setSecretWord(null)
       setLatestWord(null)
       saveSession({ sessionId: id, date: todayStr(), guesses: [], won: false, secretWord: null })
+    } catch (err) {
+      setSessionId(null)
+      setStartupError(err.message || 'Could not start a new game')
     } finally {
       setLoading(false)
     }
@@ -73,7 +78,12 @@ export default function App() {
         saveSession({ sessionId, date: todayStr(), guesses: nextGuesses, won: false, secretWord: null })
       }
     } catch (err) {
-      setError(err.message || 'Something went wrong')
+      if (err.status === 401) {
+        await startNewGame()
+        setError('Session expired — started a new game. Try again.')
+      } else {
+        setError(err.message || 'Something went wrong')
+      }
     } finally {
       setSubmitting(false)
     }
@@ -97,23 +107,34 @@ export default function App() {
     )
   }
 
+  const innerClass = activeTab === 'about' ? 'app__inner app__inner--wide' : 'app__inner'
+
   return (
     <div className="app">
-      <div className="app__inner">
-        <Header guessCount={guesses.length} onReset={startNewGame} />
-        {won
-          ? <WinBanner secretWord={secretWord} guessCount={guesses.length} />
-          : <ClosestCard guess={closest} />
-        }
-        {latestGuess && !won && (
-          <div className="latest-hint">
-            <span className="latest-hint__word">{latestGuess.word}</span>
-            <span className="latest-hint__rank">rank {latestGuess.rank.toLocaleString()}</span>
-          </div>
-        )}
-        <GuessInput onSubmit={handleGuess} disabled={won} submitting={submitting} />
-        <GuessList guesses={guesses} latestWord={latestWord} won={won} />
-        <footer className="footer">Lower rank · closer meaning</footer>
+      <div className={innerClass}>
+        <TabNav active={activeTab} onChange={setActiveTab} />
+        <div className="tab-panels">
+          <section hidden={activeTab !== 'game'}>
+            <GameSection
+              guesses={guesses}
+              won={won}
+              secretWord={secretWord}
+              closest={closest}
+              latestGuess={latestGuess}
+              latestWord={latestWord}
+              submitting={submitting}
+              startupError={startupError}
+              onReset={startNewGame}
+              onGuess={handleGuess}
+            />
+          </section>
+          <section hidden={activeTab !== 'about'}>
+            <AboutSection isActive={activeTab === 'about'} />
+          </section>
+          <section hidden={activeTab !== 'builtby'}>
+            <BuiltBySection />
+          </section>
+        </div>
       </div>
     </div>
   )
