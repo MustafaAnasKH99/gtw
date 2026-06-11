@@ -2,7 +2,7 @@ export default function Header({ guessCount, onReset }) {
   return (
     <header className="header">
       <h1 className="header__title">
-        Guess <em>the</em> Word
+        <em>Guess</em>The Word
       </h1>
       <div className="header__meta">
         <span className="header__count">
