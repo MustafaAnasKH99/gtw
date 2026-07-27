@@ -1,6 +1,6 @@
 import { test, describe, before, after } from "node:test";
 import assert from "node:assert/strict";
-import { wordExists, getRandomWord, wordCount, getRank, closePool } from "./index.js";
+import { wordExists, getRandomWord, wordCount, getRank, touchGameSession, closePool } from "./index.js";
 
 test("database has words loaded", async () => {
   const count = await wordCount();
@@ -44,10 +44,9 @@ describe("server endpoints", () => {
   let server;
   let baseUrl;
   let app;
-  let sessions;
 
   before(async () => {
-    ({ app, sessions } = await import("../server.js"));
+    ({ app } = await import("../server.js"));
     server = await new Promise(resolve => {
       const s = app.listen(0, () => resolve(s));
     });
@@ -94,7 +93,7 @@ describe("server endpoints", () => {
 
   test("POST /guess with the secret word returns won: true", async () => {
     const { body: game } = await newGame();
-    const secretWord = sessions.get(game.sessionId).secretWord;
+    const secretWord = await touchGameSession(game.sessionId);
     const { res, body } = await guess(game.sessionId, secretWord);
     assert.equal(res.status, 200);
     assert.equal(body.rank, 1);
@@ -103,10 +102,10 @@ describe("server endpoints", () => {
 
   test("session is deleted after winning", async () => {
     const { body: game } = await newGame();
-    const secretWord = sessions.get(game.sessionId).secretWord;
+    const secretWord = await touchGameSession(game.sessionId);
     await guess(game.sessionId, secretWord);
     const { res, body } = await guess(game.sessionId, "embassy");
-    assert.equal(res.status, 404);
+    assert.equal(res.status, 401);
     assert.ok(body.error.includes("session not found"));
   });
 
@@ -117,14 +116,14 @@ describe("server endpoints", () => {
     assert.equal(body.error, "word not recognized");
   });
 
-  test("POST /guess with no session header returns 404", async () => {
+  test("POST /guess with no session header returns 401", async () => {
     const res = await fetch(`${baseUrl}/guess`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ word: "embassy" }),
     });
     const body = await res.json();
-    assert.equal(res.status, 404);
+    assert.equal(res.status, 401);
     assert.ok(body.error.includes("session not found"));
   });
 
@@ -142,7 +141,7 @@ describe("server endpoints", () => {
 
   test("rank of secret word is always 1", async () => {
     const { body: game } = await newGame();
-    const secretWord = sessions.get(game.sessionId).secretWord;
+    const secretWord = await touchGameSession(game.sessionId);
     const { body } = await guess(game.sessionId, secretWord);
     assert.equal(body.rank, 1);
   });

@@ -1,63 +1,75 @@
+// Local-development server.
+//
+// Production is Supabase Edge Functions — see supabase/functions/{new-game,
+// guess,viz-ranks}. This mirrors their routes and responses so the frontend can
+// run against localhost with no code changes, and so db/test.js has something to
+// exercise. Keep the two in sync; the shared game logic lives in the RPCs under
+// supabase/migrations/.
 import express from "express";
 import cors from "cors";
-import { randomUUID } from "crypto";
 import { fileURLToPath } from "url";
 import path from "path";
-import { wordExists, getRandomWord, wordCount, getRank, getRanksForWords } from "./db/index.js";
+import {
+  wordExists,
+  wordCount,
+  getRank,
+  getRanksForWords,
+  newGameSession,
+  touchGameSession,
+  endGameSession,
+} from "./db/index.js";
 
 const app = express();
 app.use(cors({ origin: process.env.CORS_ORIGIN ?? "*" }));
 app.use(express.json());
 
-const SESSION_TTL_MS = 24 * 60 * 60 * 1000;
-
-// Map<sessionId, { secretWord, lastAccessedAt }>
-const sessions = new Map();
+// Sessions live in the game_sessions table, not in process memory, because Edge
+// Function isolates are stateless and short-lived. TTL is enforced inside
+// touch_game_session(); expired rows are reclaimed by
+// purge_expired_game_sessions() rather than a setInterval sweep.
 
 // Kick off the word count query immediately but don't block module initialization.
 // This way app.listen() always fires even if the DB is slow or unreachable at startup.
 const totalWordsPromise = wordCount();
 const getTotal = () => totalWordsPromise;
 
-// Sweep expired sessions every hour
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, session] of sessions) {
-    if (now - session.lastAccessedAt > SESSION_TTL_MS) sessions.delete(id);
-  }
-}, 60 * 60 * 1000).unref();
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 app.post("/new-game", async (_req, res) => {
   try {
-    const secretWord = await getRandomWord();
-    const sessionId = randomUUID();
-    sessions.set(sessionId, { secretWord, lastAccessedAt: Date.now() });
+    const sessionId = await newGameSession();
     res.json({ sessionId, message: "New game started" });
-  } catch {
+  } catch (err) {
+    console.error("/new-game failed:", err);
     res.status(500).json({ error: "failed to start game" });
   }
 });
 
 app.post("/guess", async (req, res) => {
   const sessionId = req.headers["x-session-id"];
-  const session = sessions.get(sessionId);
-  if (!session) return res.status(401).json({ error: "session not found — start a new game" });
-
-  session.lastAccessedAt = Date.now();
-
-  const word = req.body?.word?.trim().toLowerCase();
-  if (!word) return res.status(400).json({ error: "missing word" });
+  if (!UUID_RE.test(sessionId ?? "")) {
+    return res.status(401).json({ error: "session not found — start a new game" });
+  }
 
   try {
+    const secretWord = await touchGameSession(sessionId);
+    if (!secretWord) {
+      return res.status(401).json({ error: "session not found — start a new game" });
+    }
+
+    const word = req.body?.word?.trim().toLowerCase();
+    if (!word) return res.status(400).json({ error: "missing word" });
+
     if (!await wordExists(word)) return res.status(404).json({ error: "word not recognized" });
 
-    const rank = await getRank(session.secretWord, word);
+    const rank = await getRank(secretWord, word);
     const won = rank === 1;
 
-    if (won) sessions.delete(sessionId);
+    if (won) await endGameSession(sessionId);
 
     res.json({ word, rank, total: await getTotal(), won });
-  } catch {
+  } catch (err) {
+    console.error("/guess failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
@@ -66,10 +78,10 @@ app.get("/health", async (_req, res) => {
   res.json({ status: "ok", words: await getTotal() });
 });
 
-// Visualization endpoint: ranks a fixed set of words against a secret. Returns
-// the secret in plaintext — this is unrelated to game sessions and exists purely
-// to drive the About-tab 3D viz.
-app.post("/viz/ranks", async (req, res) => {
+// Ranks a fixed set of words against a secret. Returns the secret in plaintext —
+// this is unrelated to game sessions and exists purely to drive the About-tab 3D
+// viz. Named to match the Edge Function, which cannot have a slash in its name.
+app.post("/viz-ranks", async (req, res) => {
   const words = req.body?.words;
   if (!Array.isArray(words) || words.length === 0) {
     return res.status(400).json({ error: "words must be a non-empty array" });
@@ -81,20 +93,20 @@ app.post("/viz/ranks", async (req, res) => {
     return res.status(400).json({ error: "words must all be non-empty strings" });
   }
 
-  let secret = req.body?.secret;
-  if (secret !== undefined) {
-    if (typeof secret !== "string" || !await wordExists(secret)) {
-      return res.status(404).json({ error: "secret word not found" });
-    }
-  } else {
-    secret = words[Math.floor(Math.random() * words.length)];
-  }
-
   try {
+    let secret = req.body?.secret;
+    if (secret !== undefined) {
+      if (typeof secret !== "string" || !await wordExists(secret)) {
+        return res.status(404).json({ error: "secret word not found" });
+      }
+    } else {
+      secret = words[Math.floor(Math.random() * words.length)];
+    }
+
     const ranks = await getRanksForWords(secret, words);
     res.json({ secret, ranks });
   } catch (err) {
-    console.error("/viz/ranks failed:", err);
+    console.error("/viz-ranks failed:", err);
     res.status(500).json({ error: "internal error" });
   }
 });
@@ -105,7 +117,7 @@ const distPath = path.join(__dirname, "frontend", "dist");
 app.use(express.static(distPath));
 app.get("/{*path}", (_req, res) => res.sendFile(path.join(distPath, "index.html")));
 
-export { app, sessions };
+export { app };
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const PORT = process.env.PORT ?? 3000;

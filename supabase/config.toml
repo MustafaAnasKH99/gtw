@@ -1,0 +1,13 @@
+project_id = "vgppqssqmtxqsyjcqoup"
+
+# The game has no user accounts, so there is no JWT to verify. Callers are not
+# required to present the anon key; each function does its own validation and
+# reaches the database only through the SECURITY DEFINER RPCs.
+[functions.new-game]
+verify_jwt = false
+
+[functions.guess]
+verify_jwt = false
+
+[functions.viz-ranks]
+verify_jwt = false

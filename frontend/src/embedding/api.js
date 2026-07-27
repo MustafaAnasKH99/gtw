@@ -2,7 +2,7 @@ const BASE = (import.meta.env.VITE_API_BASE_URL ?? '').replace(/\/$/, '')
 
 export async function fetchVizRanks(words, secret, signal) {
   const body = secret ? { words, secret } : { words }
-  const res = await fetch(`${BASE}/viz/ranks`, {
+  const res = await fetch(`${BASE}/viz-ranks`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

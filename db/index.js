@@ -1,3 +1,10 @@
+// Local-development data layer.
+//
+// Production runs on Supabase Edge Functions (supabase/functions/*), which reach
+// the database through the same SECURITY DEFINER RPCs called below. The SQL
+// itself lives in supabase/migrations/ and is deliberately not duplicated here —
+// this module is a thin pg-backed shim so `npm run app` and `npm test` work
+// without Docker or a deployed function.
 import pg from "pg";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,49 +22,35 @@ const pool = new pg.Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-export async function wordExists(word) {
-  const { rows } = await pool.query("SELECT 1 FROM words WHERE word = $1", [word]);
-  return rows.length > 0;
+// `words` and `game_sessions` are RLS-protected. This connects as the postgres
+// role, which bypasses RLS; the Edge Functions use the service_role key instead.
+async function rpc(fn, params = []) {
+  const placeholders = params.map((_, i) => `$${i + 1}`).join(", ");
+  const { rows } = await pool.query(`SELECT public.${fn}(${placeholders}) AS result`, params);
+  return rows[0]?.result ?? null;
 }
 
-export async function getRandomWord() {
-  const { rows } = await pool.query("SELECT word FROM words ORDER BY RANDOM() LIMIT 1");
-  return rows[0]?.word ?? null;
-}
+export const wordExists = word => rpc("word_exists", [word]);
 
-export async function wordCount() {
-  const { rows } = await pool.query("SELECT COUNT(*)::int AS count FROM words");
-  return rows[0].count;
-}
+export const getRandomWord = () => rpc("random_word");
 
-// Returns the 1-based rank of guessWord relative to secretWord.
-// Rank 1 = the secret word itself (distance 0). Higher rank = less similar.
-export async function getRank(secretWord, guessWord) {
-  const { rows } = await pool.query(
-    `SELECT (
-       SELECT COUNT(*)::int FROM words
-       WHERE embedding <=> s.embedding < (w.embedding <=> s.embedding)
-     ) + 1 AS rank
-     FROM words w, words s
-     WHERE w.word = $1 AND s.word = $2`,
-    [guessWord, secretWord]
-  );
-  return rows[0]?.rank ?? null;
-}
+export const wordCount = () => rpc("word_count");
 
-// Returns global ranks (1-based, over the full corpus) for each word in `words`,
-// relative to `secretWord`. RANK() OVER sorts all words by distance once
-// (O(N log N)) and ties share a rank, instead of a per-row count subquery
-// (O(N²)) that hits Supabase's statement_timeout on a 14k-row corpus.
+// 1-based rank of guessWord relative to secretWord.
+// Rank 1 = the secret itself (distance 0); higher rank = less similar.
+export const getRank = (secretWord, guessWord) => rpc("get_rank", [secretWord, guessWord]);
+
+export const newGameSession = () => rpc("new_game");
+
+/** Secret word for the session, or null if unknown or past its 24h TTL. */
+export const touchGameSession = sessionId => rpc("touch_game_session", [sessionId]);
+
+export const endGameSession = sessionId => rpc("end_game_session", [sessionId]);
+
+/** Global ranks (1-based, over the full corpus) for each word, vs secretWord. */
 export async function getRanksForWords(secretWord, words) {
   const { rows } = await pool.query(
-    `WITH s AS MATERIALIZED (SELECT embedding FROM words WHERE word = $1),
-          ranked AS (
-            SELECT w.word,
-                   RANK() OVER (ORDER BY w.embedding <=> s.embedding) AS rank
-            FROM words w, s
-          )
-     SELECT word, rank::int AS rank FROM ranked WHERE word = ANY($2::text[])`,
+    "SELECT word, rank FROM public.get_ranks_for_words($1, $2::text[])",
     [secretWord, words]
   );
   const out = {};

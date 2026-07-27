@@ -4,6 +4,9 @@
     "start": "node server.js",
     "app": "concurrently -n server,frontend -c blue,magenta \"node server.js\" \"npm --prefix frontend run dev\"",
     "db:migrate": "node db/migrate-to-supabase.js",
+    "db:push": "npx --yes supabase db push",
+    "functions:serve": "npx --yes supabase functions serve",
+    "functions:deploy": "npx --yes supabase functions deploy",
     "embed": "node generate_embeddings/generate.js",
     "precompute:3d": "node precompute_3d/reduce.js",
     "test": "node --test db/test.js"
